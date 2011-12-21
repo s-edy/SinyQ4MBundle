@@ -1,0 +1,7 @@
+parameters:
+#    siny_q4_m.example.class: Siny\Q4MBundle\Example
+
+services:
+#    siny_q4_m.example:
+#        class: %siny_q4_m.example.class%
+#        arguments: [@service_id, "plain_value", %parameter%]
