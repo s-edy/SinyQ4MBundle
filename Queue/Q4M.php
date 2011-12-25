@@ -101,7 +101,10 @@ class Q4M
                 throw new Q4MException("The parameter is empty.");
             }
             $placeholders = array_fill(0, $count, '?');
-            $statement = $this->pdo->prepare(sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, implode(",", array_keys($parameters)), implode(",", $placeholders)));
+            $sql = sprintf(
+                "INSERT INTO %s (%s) VALUES (%s)",
+                $table, implode(",", array_keys($parameters)), implode(",", $placeholders));
+            $statement = $this->pdo->prepare($sql);
             $index = 0;
             foreach ($parameters as $key => $value) {
                 if (is_array($value)) {
@@ -120,15 +123,15 @@ class Q4M
                 if ($result !== true) {
                     throw new Q4MException(sprintf("Failed to insert. error=[%s]", implode(",", $statement->errorInfo())));
                 }
+                return $this;
             } catch (PDOException $e) {
-                throw new Q4MException(sprintf("Failed to execute SQL. message=[%s]", $e->getMessage()), 0, $e);
+                throw new Q4MException("Failed to execute SQL.", 0, $e);
             }
         } catch (Exception $e) {
             throw new Q4MException(sprintf(
-                "Failed to enqueue. table=[%s], parameters=[%s], message=[%s]",
-                $table, str_replace("\n", "", var_export($parameters, true)), $e->getMessage()), 0, $e);
+                "Failed to enqueue. table=[%s], parameters=[%s]",
+                $table, str_replace("\n", "", var_export($parameters, true))), 0, $e);
         }
-        return $this;
     }
 
     /**
@@ -144,15 +147,8 @@ class Q4M
             if ($this->isModeOwner() === false) {
                 throw new Q4MException("Must execute any wait function before dequeueing.");
             }
-            $statement = $this->pdo->query(sprintf('SELECT * FROM %s', $this->getWaitingTableName()));
-            if ($statement === false) {
-                throw new Q4MException(sprintf("Failed to execute dequeueing. table=[%s]", $this->getWaitingTableName()));
-            }
-            $object = $statement->fetch($style);
-            if ($object === false) {
-                throw new Q4MException(sprintf("Failed to fetch. table=[%s]", $this->getWaitingTableName()));
-            }
-            return $object;
+            $statement = $this->query(sprintf('SELECT * FROM %s', $this->getWaitingTableName()));
+            return $this->fetch($statement, $style);
         } catch (Exception $e) {
             throw new Q4MException(sprintf("Failed to dequeue. style=[%s]", $style), 0, $e);
         }
@@ -228,16 +224,13 @@ class Q4M
      *
      * @param string $function - A function to execute.
      * @throws Q4MException
-     * @return \Siny\Q4MBundle\Queue\Q4M
+     * @return Siny\Q4MBundle\Queue\Q4M
      */
     private function executeFunction($function, $executionOnly = true)
     {
         try {
-            $statement = $this->pdo->query(sprintf('SELECT %s', $function));
-            if ($statement === false) {
-                throw new Q4MException(sprintf("Failed to query. error=[%s]", implode(",", $this->pdo->errorInfo())));
-            }
-            $value = $statement->fetch(PDO::FETCH_ASSOC);
+            $statement = $this->query(sprintf('SELECT %s', $function));
+            $value = $this->fetch($statement, PDO::FETCH_ASSOC);
             if (! isset($value[$function])) {
                 throw new Q4MException("Failed to fetch");
             } else if ($executionOnly && $value[$function] !== "1") {
@@ -247,5 +240,40 @@ class Q4M
         } catch (Exception $e) {
             throw new Q4MException(sprintf("Failed to execute function. function=[%s]", $function), 0, $e);
         }
+    }
+
+    /**
+     * Execute query by PDO
+     *
+     * @param string $sql
+     * @throws Q4MException
+     * @return PDOStatement
+     */
+    private function query($sql)
+    {
+        $statement = $this->pdo->query($sql);
+        if ($statement === false) {
+            throw new Q4MException(sprintf(
+                "Failed to execute query. sql=[%s], message=[%s]",
+                $sql, implode(",", $this->pdo->errorInfo())));
+        }
+        return $statement;
+    }
+
+    /**
+     * Execute fetch by statement
+     *
+     * @param PDOStatement $statement
+     * @param integer $style
+     * @throws Q4MException
+     * @return mixed (depends on the fetch type)
+     */
+    private function fetch($statement, $style)
+    {
+        $object = $statement->fetch($style);
+        if ($object === false) {
+            throw new Q4MException("Failed to fetch.");
+        }
+        return $object;
     }
 }
