@@ -224,7 +224,7 @@ class Q4M
      * @throws Q4MException
      * @return string
      */
-    public function generateEnqueueSQL($table, array $parameters)
+    private function generateEnqueueSQL($table, array $parameters)
     {
         $count = count($parameters);
         if ($count === 0) {
@@ -243,7 +243,7 @@ class Q4M
      * @throws Q4MException
      * @return PDOStatement
      */
-    public function bind(PDOStatement $statement, array $parameters)
+    private function bind(PDOStatement $statement, array $parameters)
     {
         $index = 0;
         foreach ($parameters as $key => $value) {
