@@ -138,8 +138,9 @@ class Q4M
      */
     public function waitOnSingleTable($table)
     {
+        $function = sprintf("queue_wait(%s)", $this->pdo->quote($table));
         try {
-            $this->executeFunction(sprintf("queue_wait(%s)", $this->pdo->quote($table)));
+            $this->executeFunction($function);
             $this->isModeOwner  = true;
             $this->waitingTable = $table;
             return $this;
