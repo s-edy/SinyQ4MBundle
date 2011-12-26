@@ -12,6 +12,7 @@ namespace Siny\Q4MBundle\Queue;
 
 use Siny\Q4MBundle\Queue\Exception\Q4MException;
 use \PDO;
+use \PDOStatement;
 use \PDOException;
 use \Exception;
 
@@ -96,41 +97,15 @@ class Q4M
     public function enqueue($table, array $parameters)
     {
         try {
-            $count = count($parameters);
-            if ($count === 0) {
-                throw new Q4MException("The parameter is empty.");
+            $statement = $this->bind($this->pdo->prepare($this->generateEnqueueSQL($table, $parameters)), $parameters);
+            $result = $statement->execute();
+            if ($result !== true) {
+                throw new Q4MException(sprintf("Failed to insert. error=[%s]", implode(",", $statement->errorInfo())));
             }
-            $placeholders = array_fill(0, $count, '?');
-            $sql = sprintf(
-                "INSERT INTO %s (%s) VALUES (%s)",
-                $table, implode(",", array_keys($parameters)), implode(",", $placeholders));
-            $statement = $this->pdo->prepare($sql);
-            $index = 0;
-            foreach ($parameters as $key => $value) {
-                if (is_array($value)) {
-                    throw new Q4MException(sprintf("The parameter must be primitive. key=[%s]", $key));
-                } else if (is_bool($value)) {
-                    $type = PDO::PARAM_BOOL;
-                } else if (is_int($value) || ctype_digit(strval($value))) {
-                    $type = PDO::PARAM_INT;
-                } else {
-                    $type = PDO::PARAM_STR;
-                }
-                $statement->bindValue(++$index, $value, $type);
-            }
-            try {
-                $result = $statement->execute();
-                if ($result !== true) {
-                    throw new Q4MException(sprintf("Failed to insert. error=[%s]", implode(",", $statement->errorInfo())));
-                }
-                return $this;
-            } catch (PDOException $e) {
-                throw new Q4MException("Failed to execute SQL.", 0, $e);
-            }
+            return $this;
         } catch (Exception $e) {
-            throw new Q4MException(sprintf(
-                "Failed to enqueue. table=[%s], parameters=[%s]",
-                $table, str_replace("\n", "", var_export($parameters, true))), 0, $e);
+            $parameterString = str_replace("\n", "", var_export($parameters, true));
+            throw new Q4MException(sprintf("Failed to enqueue. table=[%s], parameters=[%s]", $table, $parameterString), 0, $e);
         }
     }
 
@@ -143,10 +118,10 @@ class Q4M
      */
     public function dequeue($style = PDO::FETCH_ASSOC)
     {
+        if ($this->isModeOwner() === false) {
+            throw new Q4MException("Must execute any wait function before dequeueing.");
+        }
         try {
-            if ($this->isModeOwner() === false) {
-                throw new Q4MException("Must execute any wait function before dequeueing.");
-            }
             $statement = $this->query(sprintf('SELECT * FROM %s', $this->getWaitingTableName()));
             return $this->fetch($statement, $style);
         } catch (Exception $e) {
@@ -164,9 +139,8 @@ class Q4M
     public function waitOnSingleTable($table)
     {
         try {
-            $function = sprintf("queue_wait(%s)", $this->pdo->quote($table));
-            $this->executeFunction($function);
-            $this->isModeOwner = true;
+            $this->executeFunction(sprintf("queue_wait(%s)", $this->pdo->quote($table)));
+            $this->isModeOwner  = true;
             $this->waitingTable = $table;
             return $this;
         } catch (Exception $e) {
@@ -229,8 +203,7 @@ class Q4M
     private function executeFunction($function, $executionOnly = true)
     {
         try {
-            $statement = $this->query(sprintf('SELECT %s', $function));
-            $value = $this->fetch($statement, PDO::FETCH_ASSOC);
+            $value = $this->fetch($this->query(sprintf('SELECT %s', $function)), PDO::FETCH_ASSOC);
             if (! isset($value[$function])) {
                 throw new Q4MException("Failed to fetch");
             } else if ($executionOnly && $value[$function] !== "1") {
@@ -240,6 +213,51 @@ class Q4M
         } catch (Exception $e) {
             throw new Q4MException(sprintf("Failed to execute function. function=[%s]", $function), 0, $e);
         }
+    }
+
+    /**
+     * Generate enqueue SQL
+     *
+     * @param string $table
+     * @param array $parameters
+     * @throws Q4MException
+     * @return string
+     */
+    public function generateEnqueueSQL($table, array $parameters)
+    {
+        $count = count($parameters);
+        if ($count === 0) {
+            throw new Q4MException("The parameter is empty.");
+        }
+        $keys   = implode(",", array_keys($parameters));
+        $values = implode(",", array_fill(0, $count, '?'));
+        return sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+    }
+
+    /**
+     * Bind parameters
+     *
+     * @param PDOStatement $statement
+     * @param array $parameters
+     * @throws Q4MException
+     * @return PDOStatement
+     */
+    public function bind(PDOStatement $statement, array $parameters)
+    {
+        $index = 0;
+        foreach ($parameters as $key => $value) {
+            if (is_array($value)) {
+                throw new Q4MException(sprintf("The parameter must be primitive. key=[%s]", $key));
+            } else if (is_bool($value)) {
+                $type = PDO::PARAM_BOOL;
+            } else if (is_int($value) || ctype_digit(strval($value))) {
+                $type = PDO::PARAM_INT;
+            } else {
+                $type = PDO::PARAM_STR;
+            }
+            $statement->bindValue(++$index, $value, $type);
+        }
+        return $statement;
     }
 
     /**
@@ -253,9 +271,7 @@ class Q4M
     {
         $statement = $this->pdo->query($sql);
         if ($statement === false) {
-            throw new Q4MException(sprintf(
-                "Failed to execute query. sql=[%s], message=[%s]",
-                $sql, implode(",", $this->pdo->errorInfo())));
+            throw new Q4MException(sprintf("Failed to execute query. sql=[%s], message=[%s]", $sql, implode(",", $this->pdo->errorInfo())));
         }
         return $statement;
     }
