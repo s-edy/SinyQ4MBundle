@@ -22,5 +22,6 @@
         <var name="SinyQ4MBundle_PASSWORD" value="q4mtestpassword" />
         <var name="SinyQ4MBundle_DBNAME" value="q4mtest" />
         <var name="SinyQ4MBundle_TABLE" value="q4mtest" />
+        <var name="SinyQ4MBundle_LOW_PRIORITY_TABLE" value="q4mtest_row_priority" />
     </php>
 </phpunit>

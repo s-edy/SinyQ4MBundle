@@ -48,8 +48,8 @@ class AppKernel extends Kernel
         );
 ```
 
-Set up
-------
+Set up in order to unit test
+----------------------------
 
 ### 1) Create new user, database, and table for testing Q4MBundle
 
@@ -70,6 +70,11 @@ $ mysql -uq4mtestuser -pq4mtestpassword
 CREATE DATABASE IF NOT EXISTS q4mtest DEFAULT CHARSET UTF8;
 use q4mtest;
 CREATE TABLE `q4mtest` (
+  `id` int(11) NOT NULL,
+  `message` varchar(255) DEFAULT NULL,
+  `priority` tinyint(3) unsigned NOT NULL DEFAULT '10'
+) ENGINE=QUEUE DEFAULT CHARSET=utf8;
+CREATE TABLE `q4mtest_row_priority` (
   `id` int(11) NOT NULL,
   `message` varchar(255) DEFAULT NULL,
   `priority` tinyint(3) unsigned NOT NULL DEFAULT '10'

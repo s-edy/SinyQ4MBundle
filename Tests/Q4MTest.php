@@ -76,6 +76,11 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
         $this->q4m = new Q4M(self::$pdo);
     }
 
+    /**
+     * Tear down
+     *
+     * @see PHPUnit_Extensions_Database_TestCase::tearDown()
+     */
     public function tearDown()
     {
         parent::tearDown();
@@ -211,22 +216,22 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     }
 
     /**
-     * Self object will return when invoking wait on single table
+     * Self object will return when invoking wait with single table
      */
-    public function testSelfObjectWillReturnWhenInvokingWaitOnSingleTable()
+    public function testSelfObjectWillReturnWhenInvokingWaitWithSingleTable()
     {
         $this->assertSame(
             $this->q4m,
-            $this->q4m->waitOnSingleTable($this->getTableName()),
+            $this->q4m->waitWithSingleTable($this->getTableName()),
             "`queue_wait()` function end unsuccessfully");
     }
 
     /**
-     * Mode will turn owner when invoking wait on single table
+     * Mode will turn owner when invoking wait with single table
      */
-    public function testModeWillTurnOwnerWhenInvokingWaitOnSingleTable()
+    public function testModeWillTurnOwnerWhenInvokingWaitWithSingleTable()
     {
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
 
         $this->assertTrue($this->q4m->isModeOwner(), "The mode wasn't OWNER");
     }
@@ -234,26 +239,84 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     /**
      * Can wait again when the mode is owner, but will consume a row.
      */
-    public function testCanWaitOnSingleTableAgainWhenTheModeIsOwnerButWillConsumeARow()
+    public function testCanwaitWithSingleTableAgainWhenTheModeIsOwnerButWillConsumeARow()
     {
         $expected = $this->getRowCount() - 1;
 
-        $this->q4m->waitOnSingleTable($this->getTableName());
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
         $this->forceAbort();
 
         $this->assertSame($expected, $this->getRowCount(), "A row wasn't consumed.");
     }
 
     /**
-     * Exception will occur when SQL execution failed at invoking waitOnSingleTable
+     * Exception will occur when SQL execution failed at invoking waitWithSingleTable
      *
      * @expectedException Siny\Q4MBundle\Queue\Exception\Q4MException
      */
-    public function testExceptionWillOccurWhenSqlExecutionFailedAtInvokingWaitOnSingleTable()
+    public function testExceptionWillOccurWhenSqlExecutionFailedAtInvokingWaitWithSingleTable()
     {
         $q4m = new Q4M($this->getMockOfPDOToFailExecution());
-        $q4m->waitOnSingleTable($this->getTableName());
+        $q4m->waitWithSingleTable($this->getTableName());
+    }
+
+    /**
+     * Self object will return when invoking wait with plural tables
+     */
+    public function testSelfObjectWillReturnWhenInvokingWaitWithPluralTables()
+    {
+        $this->assertSame(
+            $this->q4m,
+            $this->q4m->waitWithPluralTables($this->getPluralTableNames()),
+            "`queue_wait()` function end unsuccessfully");
+    }
+
+    /**
+     * Mode will turn owner when invoking wait with plural tables
+     */
+    public function testModeWillTurnOwnerWhenInvokingWaitWithPluralTables()
+    {
+        $this->q4m->waitWithPluralTables($this->getPluralTableNames());
+
+        $this->assertTrue($this->q4m->isModeOwner(), "The mode wasn't OWNER");
+    }
+
+    /**
+     * Highest priority table of all tables will be set after wait with plural tables
+     */
+    public function testHighestPriorityTableOfAllTablesWillBeSetAfterWaitWithPluralTables()
+    {
+        $tables = $this->getPluralTableNames();
+        $this->q4m->waitWithPluralTables($tables);
+
+        $this->assertSame($tables[0], $this->q4m->getWaitingTableName(), "Waiting table name wasn't set correctly");
+    }
+
+    /**
+     * Next High priority table will be set after wait with plural tables when the highest priority table is empty.
+     */
+    public function testNextHighPriorityTableWillBeSetAfterWaitWithPluralTablesWhenTheHighestPriorityTableIsEmpty()
+    {
+        self::$pdo->query(sprintf('TRUNCATE TABLE `%s`', $this->getTableName()));
+        $tables = $this->getPluralTableNames();
+        $this->q4m->waitWithPluralTables($tables);
+
+        $this->assertSame($tables[1], $this->q4m->getWaitingTableName(), "Waiting table name wasn't set correctly");
+    }
+
+    /**
+     * Exception will occur when all tables are not available when invoing wait with plural tables
+     *
+     * @expectedException Siny\Q4MBundle\Queue\Exception\Q4MException
+     */
+    public function testExceptionWillOccurWhenAllTablesAreNotAvailableWhenInvokingWaitWithPluralTables()
+    {
+        $tables = $this->getPluralTableNames();
+        foreach ($tables as $table) {
+            self::$pdo->query(sprintf('TRUNCATE TABLE `%s`', $table));
+        }
+        $this->q4m->waitWithPluralTables($tables);
     }
 
     /**
@@ -271,7 +334,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testDequeuedValueIsArrayInTheCaseOfDefault()
     {
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
 
         $value = $this->q4m->dequeue();
 
@@ -295,7 +358,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testCanChoiceDequeuedValueType()
     {
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
 
         $this->assertInstanceOf('stdClass', $this->q4m->dequeue(PDO::FETCH_OBJ), "dequeued values is not stdClass class instance.");
     }
@@ -349,7 +412,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     public function testEndFunctionWillConsumeARowWhileWaiting()
     {
         $expected = $this->getRowCount() - 1;
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
         $this->q4m->end();
         $this->assertSame($expected, $this->getRowCount(), "A row wasn't consumed.");
     }
@@ -369,7 +432,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testTheModeWillGoOutOwnerWhenInvokingEnd()
     {
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
         $this->assertTrue($this->q4m->isModeOwner(), "The mode wasn't OWNER");
         $this->q4m->end();
         $this->assertFalse($this->q4m->isModeOwner(), "The mode wasn' NON-OWNER");
@@ -413,7 +476,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testSelfObjectWillReturnWhenInvokingAbort()
     {
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
         $this->assertSame($this->q4m, $this->q4m->abort(), "Self object wasn't returned.");
     }
 
@@ -423,7 +486,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     public function testAbortFunctionWillNotConsumeAnyRow()
     {
         $expected = $this->getRowCount();
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
         $this->q4m->abort();
         $this->assertSame($expected, $this->getRowCount(), "A row was consumed.");
     }
@@ -433,7 +496,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testTheModeWillGoOutOwnerWhenInvokingAbort()
     {
-        $this->q4m->waitOnSingleTable($this->getTableName());
+        $this->q4m->waitWithSingleTable($this->getTableName());
         $this->assertTrue($this->q4m->isModeOwner(), "The mode wasn't OWNER");
         $this->q4m->abort();
         $this->assertFalse($this->q4m->isModeOwner(), "The mode wasn' NON-OWNER");
@@ -517,6 +580,14 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     private function getTableName()
     {
         return $GLOBALS['SinyQ4MBundle_TABLE'];
+    }
+
+    /**
+     * Get prioritized multiple table names
+     */
+    private function getPluralTableNames()
+    {
+        return array($this->getTableName(), $GLOBALS['SinyQ4MBundle_LOW_PRIORITY_TABLE']);
     }
 
     /**

@@ -130,22 +130,49 @@ class Q4M
     }
 
     /**
-     * Wait on single table
+     * Wait with single table
      *
      * @param string $table
      * @throws Exception
      * @return \Siny\Q4MBundle\Queue\Q4M
      */
-    public function waitOnSingleTable($table)
+    public function waitWithSingleTable($table)
     {
         $function = sprintf("queue_wait(%s)", $this->pdo->quote($table));
         try {
             $this->executeFunction($function);
-            $this->isModeOwner  = true;
-            $this->waitingTable = $table;
-            return $this;
+            return $this->wait($table);
         } catch (Exception $e) {
-            throw new Q4MException(sprintf("Failed to wait on single table. function=[%s]", $function), 0, $e);
+            throw new Q4MException(sprintf("Failed to wait with single table. function=[%s]", $function), 0, $e);
+        }
+    }
+
+    /**
+     * Wait with plural tables
+     *
+     * @param array $tables
+     * @param integer $timeout
+     * @throws Q4MException
+     * @return \Siny\Q4MBundle\Queue\Q4M
+     */
+    public function waitWithPluralTables(array $tables, $timeout = 1)
+    {
+        $arguments = array();
+        foreach ($tables as $table) {
+            $arguments[] = $this->pdo->quote($table);
+        }
+        $arguments[] = intval($timeout);
+        $function = sprintf("queue_wait(%s)", implode(",", $arguments));
+        try {
+            $value = $this->executeFunction($function, true);
+            $index = intval($value[$function]) - 1;
+            if (! isset($tables[$index])) {
+                throw new Q4MException("All table aren't available.");
+            }
+            return $this->wait($tables[$index]);
+        } catch (Exception $e) {
+            $tablesString = str_replace("\n", "", var_export($tables, true));
+            throw new Q4MException(sprintf("Failed to wait with plural tables. tables=[%s]", $tablesString), 0, $e);
         }
     }
 
@@ -180,6 +207,19 @@ class Q4M
     }
 
     /**
+     * Wait
+     *
+     * @param string $table
+     * @return \Siny\Q4MBundle\Queue\Q4M
+     */
+    private function wait($table)
+    {
+        $this->waitingTable = $table;
+        $this->isModeOwner  = true;
+        return $this;
+    }
+
+    /**
      * Terminate
      *
      * @param string $function - A function name to finish. must be specified 'queue_abort' or 'queue_end'.
@@ -201,13 +241,13 @@ class Q4M
      * @throws Q4MException
      * @return Siny\Q4MBundle\Queue\Q4M
      */
-    private function executeFunction($function, $executionOnly = true)
+    private function executeFunction($function, $executionOnly = false)
     {
         try {
             $value = $this->fetch($this->query(sprintf('SELECT %s', $function)), PDO::FETCH_ASSOC);
             if (! isset($value[$function])) {
                 throw new Q4MException("Failed to fetch");
-            } else if ($executionOnly && $value[$function] !== "1") {
+            } else if (! $executionOnly && $value[$function] !== "1") {
                 throw new Q4MException("Response is incorrect");
             }
             return $value[$function];
@@ -230,9 +270,13 @@ class Q4M
         if ($count === 0) {
             throw new Q4MException("The parameter is empty.");
         }
-        $keys   = implode(",", array_keys($parameters));
+        $columns = array();
+        foreach (array_keys($parameters) as $column) {
+            $columns[] = sprintf('`%s`', $column);
+        }
+        $keys   = implode(",", $columns);
         $values = implode(",", array_fill(0, $count, '?'));
-        return sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+        return sprintf("INSERT INTO `%s` (%s) VALUES (%s)", $table, $keys, $values);
     }
 
     /**
@@ -285,7 +329,7 @@ class Q4M
      * @throws Q4MException
      * @return mixed (depends on the fetch type)
      */
-    private function fetch($statement, $style)
+    private function fetch(PDOStatement $statement, $style)
     {
         $object = $statement->fetch($style);
         if ($object === false) {
