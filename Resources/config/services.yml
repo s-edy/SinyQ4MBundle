@@ -6,11 +6,11 @@ parameters:
 
 services:
   siny_q4m.queue.pdo:
-    class:     \PDO
+    class:     PDO
     arguments:
       - %siny_q4m.queue.pdo.dsn%
       - %siny_q4m.queue.pdo.username%
       - %siny_q4m.queue.pdo.password%
   siny_q4m.queue.q4m:
-    class:    %siny_q4m.queue.q4m.class%
-    arguments @siny_q4m.queue.pdo
+    class:     %siny_q4m.queue.q4m.class%
+    arguments: [ @siny_q4m.queue.pdo ]
