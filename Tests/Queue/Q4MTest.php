@@ -8,7 +8,7 @@
 * file that was distributed with this source code.
 */
 
-namespace Siny\Q4MBundle\Tests\API;
+namespace Siny\Q4MBundle\Tests\Queue;
 
 use Siny\Q4MBundle\Queue\Q4M;
 use \PDO;
