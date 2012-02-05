@@ -25,7 +25,7 @@ class Consumer
 {
     private $q4m;
 
-    private $fetchMode = \PDO::FETCH_ASSOC;
+    private $table;
 
     private $queue;
 
@@ -34,50 +34,59 @@ class Consumer
         $this->q4m = $q4m;
     }
 
-    public function resetFetchMode()
-    {
-        $this->fetchMode = \PDO::FETCH_ASSOC;
-
-        return $this;
-    }
-
-    public function getFetchMode()
-    {
-        return $this->fetchMode;
-    }
-
     public function getQueue()
     {
         return $this->queue;
     }
 
-    public function setFetchClass($className, array $arguments = array())
+    public function consume()
     {
-        $result = $this->getQ4M()->getPDO()->setFetchMode(\PDO::FETCH_CLASS, $className, $arguments);
-        if (! $result) {
-            throw new ConsumerException(sprintf("Failed to set fetch mode to FETCH_CLASS. className=[%s], arguments=[%s]", $className, var_export($arguments, true)));
+        $count = func_num_args();
+        if ($count === 0) {
+            throw new ConsumerException("The 1st argument must specified to consuming table name.");
         }
-        $this->fetchMode = \PDO::FETCH_CLASS;
-    }
-
-    public function setFetchInto($object)
-    {
-        $result = $this->getQ4M()->getPDO()->setFetchMode(\PDO::FETCH_INTO, $object);
-        if (! $result) {
-            throw new ConsumerException(sprintf("Failed to set fetch mode to FETCH_INTO. object=[%s]", get_class($object)));
-        }
-        $this->fetchMode = \PDO::FETCH_INTO;
-     }
-
-    public function consume($table)
-    {
+        $arguments = func_get_args();
         try {
-            $this->queue = $this->getQ4M()->waitWithSingleTable($table)->dequeue($this->getFetchMode());
+            $this->getQ4M()->waitWithSingleTable(array_shift($arguments));
+            $this->queue = call_user_func_array(array($this->getQ4M(), "dequeue"), $arguments);
             return $this->queue;
         } catch (\Exception $e) {
-            throw new ConsumerException(sprintf("Failed to consume. table=[%s]", $table), 0, $e);
+            throw new ConsumerException(sprintf("Failed to consume. arguments=[%s]", var_export($arguments, true)), 0, $e);
         }
     }
+
+    public function end()
+    {
+        try {
+            if ($this->getQ4M()->isModeOwner()) {
+                $this->getQ4M()->end();
+            }
+        } catch (\Exception $e) {
+            throw new ConsumerException("Failed to end", 0, $e);
+        }
+    }
+
+    public function abort()
+    {
+        try {
+            if ($this->getQ4M()->isModeOwner()) {
+                $this->getQ4M()->abort();
+            }
+        } catch (\Exception $e) {
+            throw new ConsumerException("Failed to abort", 0, $e);
+        }
+    }
+
+    public function retry($queue)
+    {
+        try {
+            $this->end();
+            $this->getQ4M()->enqueue($this->table, $queue);
+        } catch (\Exception $e) {
+            throw new ConsumerException("Failed to cancel", 0, $e);
+        }
+    }
+
 
     protected function getQ4M()
     {

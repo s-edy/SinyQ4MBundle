@@ -13,31 +13,54 @@ namespace Siny\Q4MBundle\Tests\Queue;
 use Siny\Q4MBundle\Queue\Q4M;
 use Siny\Q4MBundle\Queue\Consumer;
 
-class ConsumerTest extends \PHPUnit_Framework_TestCase
+class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
 {
     const Q4M_CLASS   = "Siny\Q4MBundle\Queue\Q4M";
-    const DUMMY_TABLE = 'dummy_table';
 
+    static private $pdo = null;
+
+    private $connection = null;
     private $q4m;
     private $consumer;
+
+    /**
+     * Get connection
+     *
+     * @see PHPUnit_Extensions_Database_TestCase::getConnection()
+     *
+     * @return PHPUnit_Extensions_Database_DB_DefaultDatabaseConnection
+     */
+    public function getConnection()
+    {
+        if (is_null($this->connection)) {
+            if (is_null(self::$pdo)) {
+                self::$pdo = new \PDO($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']);
+            }
+            $this->connection = $this->createDefaultDBConnection(self::$pdo, $GLOBALS['SinyQ4MBundle_DBNAME']);
+        }
+        return $this->connection;
+    }
+
+    /**
+     * Get data set
+     *
+     * @see PHPUnit_Extensions_Database_TestCase::getDataSet()
+     *
+     * @return PHPUnit_Extensions_Database_DataSet_IDataSet
+     */
+    public function getDataSet()
+    {
+        return $this->createXmlDataSet(__DIR__ . DIRECTORY_SEPARATOR . 'Q4MFixture.xml');
+    }
 
     /**
      * Set up Q4M client
      */
     public function setUp()
     {
-        $this->q4m = $this->getMock(self::Q4M_CLASS, array(), array(), "", false);
+        parent::setUp();
+        $this->q4m = new Q4M(self::$pdo);
         $this->consumer = new Consumer($this->q4m);
-    }
-
-    public function testSelfObjectWillReturnWhenResetFetchMode()
-    {
-        $this->assertSame($this->consumer, $this->consumer->resetFetchMode(), "Self object wasn't returned");
-    }
-
-    public function testGetFetchModeInTheCaseOfDefault()
-    {
-        $this->assertSame(\PDO::FETCH_ASSOC, $this->consumer->getFetchMode(), "Fetch mode wasn't same.");
     }
 
     public function testNullReturnWhenInvokingGetQueueInTheCaseOfDefault()
@@ -45,90 +68,98 @@ class ConsumerTest extends \PHPUnit_Framework_TestCase
         $this->assertNull($this->consumer->getQueue(), "Queue wasn't null in the case of default");
     }
 
-    public function testSetFetchClassMode()
+    public function testAQueueWillReturnWhenConsuming()
     {
-        $consumer = new Consumer($this->getMockOfQ4MAsInvokeSetFetchMode(true));
-        $consumer->setFetchClass("stdClass");
-        $this->assertSame(\PDO::FETCH_CLASS, $consumer->getFetchMode(), "The fetch mode wasn't CLASS.");
+        $expected = $this->getDataSet()->getIterator()->current()->getRow(0);
+        $actual   = $this->consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
+        $this->assertSame($expected, $actual, "Got queue wasn't same.");
+        return $this->consumer;
     }
 
-    public function testSetFetchIntoMode()
+    public function testAnotherWayToGetAQueueIsGetQueueAfterConsuming()
     {
-        $consumer = new Consumer($this->getMockOfQ4MAsInvokeSetFetchMode(true));
-        $consumer->setFetchInto(new \stdClass());
-        $this->assertSame(\PDO::FETCH_INTO, $consumer->getFetchMode(), "The fetch mode wasn't INTO.");
+        $expected = $this->consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
+        $this->assertSame($expected, $this->consumer->getQueue(), "The queue wasn't same.");
     }
 
-    /**
-     * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
-     */
-    public function testExceptionWillOccurWhenInvokeSetFetchClass()
+    public function testAQueueClassWillReturnWhenConsumingWithFetchClassMode()
     {
-        $consumer = new Consumer($this->getMockOfQ4MAsInvokeSetFetchMode(false));
-        $consumer->setFetchClass("stdClass");
-    }
-
-    /**
-     * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
-     */
-    public function testExceptionWillOccurWhenInvokeSetFetchInto()
-    {
-        $consumer = new Consumer($this->getMockOfQ4MAsInvokeSetFetchMode(false));
-        $consumer->setFetchInto(new \stdClass());
-    }
-
-    /**
-     * @dataProvider provideConsume
-     */
-    public function testAQueueWillReturnWhenConsuming($queue)
-    {
-        $consumer = new Consumer($this->getMockOfQ4MForDequeue($this->returnValue($queue)));
-        $this->assertSame($queue, $consumer->consume(self::DUMMY_TABLE));
-        return $consumer;
-    }
-
-    /**
-     * @dataProvider provideConsume
-     */
-    public function testAnotherWayToGetAQueueIsGetQueueAfterConsuming($queue)
-    {
-        $consumer = new Consumer($this->getMockOfQ4MForDequeue($this->returnValue($queue)));
-        $dequeuedQueue = $consumer->consume(self::DUMMY_TABLE);
-        $this->assertSame($dequeuedQueue, $consumer->getQueue(), "The queue wasn't same.");
-    }
-
-    public function provideConsume()
-    {
-        return array(
-            array(array('foo' => 'bar')),
-        );
+        $fetchClass = "Siny\Q4MBundle\Tests\Queue\ConsumerTestFetchClass";
+        $actual = $this->consumer->consume($GLOBALS['SinyQ4MBundle_TABLE'], \PDO::FETCH_CLASS, $fetchClass);
+        $this->assertInstanceOf($fetchClass, $actual, "The queue class instance was incorrect.");
     }
 
     /**
      * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
      */
-    public function testExceptionWillOccurWhenConsuming()
+    public function testExceptionWillOccurWhenConsumingWithEmptyArguments()
     {
-        $consumer = new Consumer($this->getMockOfQ4MForDequeue($this->throwException(new \Exception())));
-        $consumer->consume(self::DUMMY_TABLE);
+        $this->consumer->consume();
     }
 
-    private function getMockOfQ4MAsInvokeSetFetchMode($result)
+    /**
+     * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
+     */
+    public function testExceptionWillOccurWhenDequeueingFailedWhenConsuming()
     {
-        $pdo = $this->getMock(self::Q4M_CLASS, array('setFetchMode'), array(), "", false);
-        $pdo->expects($this->once())->method('setFetchMode')->will($this->returnValue($result));
-        $q4m = $this->getMock(self::Q4M_CLASS, array('getPDO'), array(), "", false);
-        $q4m->expects($this->once())->method('getPDO')->will($this->returnValue($pdo));
-
-        return $q4m;
+        $this->consumer->consume("NotExistTable");
     }
 
-    private function getMockOfQ4MForDequeue($will)
+    public function testQueueWillConsumeWhenEnding()
     {
-        $q4m = $this->getMock(self::Q4M_CLASS, array('waitWithSingleTable', 'dequeue'), array(), "", false);
-        $q4m->expects($this->once())->method('waitWithSingleTable')->will($this->returnSelf());
-        $q4m->expects($this->once())->method('dequeue')->will($will);
+        $table = $GLOBALS['SinyQ4MBundle_TABLE'];
+        $expectedCount = $this->getConnection()->getRowCount($table) - 1;
+        $this->consumer->consume($table);
+        $this->consumer->end();
+        $actualCount = $this->getConnection()->getRowCount($table);
 
-        return $q4m;
+        $this->assertSame($expectedCount, $actualCount, "Queue wasn't consumed.");
+    }
+
+    public function testQueueWillNotConsumeWhenEndingInNotOwnerMode()
+    {
+        $table = $GLOBALS['SinyQ4MBundle_TABLE'];
+        $expectedCount = $this->getConnection()->getRowCount($table);
+        $this->consumer->end();
+        $actualCount = $this->getConnection()->getRowCount($table);
+
+        $this->assertSame($expectedCount, $actualCount, "Queue was consumed.");
+    }
+
+    /**
+     * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
+     */
+    public function testExceptionWillOccurWhenEndingFailed()
+    {
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("isModeOwner", "end"), array(self::$pdo));
+        $q4m->expects($this->any())->method("isModeOwner")->will($this->returnValue(true));
+        $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
+        $consumer = new Consumer($q4m);
+        $consumer->end();
+    }
+
+    public function testQueueWillNotConsumeWhenAborting()
+    {
+        $table = $GLOBALS['SinyQ4MBundle_TABLE'];
+        $expectedCount = $this->getConnection()->getRowCount($table);
+        $this->consumer->consume($table);
+        $this->consumer->abort();
+        $actualCount = $this->getConnection()->getRowCount($table);
+
+        $this->assertSame($expectedCount, $actualCount, "Queue was consumed.");
+    }
+
+    /**
+     * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
+     */
+    public function testExceptionWillOccurWhenAbortingFailed()
+    {
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("isModeOwner", "abort"), array(self::$pdo));
+        $q4m->expects($this->any())->method("isModeOwner")->will($this->returnValue(true));
+        $q4m->expects($this->any())->method("abort")->will($this->throwException(new \Exception()));
+        $consumer = new Consumer($q4m);
+        $consumer->abort();
     }
 }
+
+class ConsumerTestFetchClass {}
