@@ -14,7 +14,7 @@ use Siny\Q4MBundle\Queue\Q4M;
 use Siny\Q4MBundle\Queue\Exception\ConsumerException;
 
 /**
- * This is a class that is very simply Q4M client.
+ * This is a consumer class for Q4M
  *
  * @package SinyQ4M
  * @subpackage Queue

@@ -11,11 +11,10 @@
 namespace Siny\Q4MBundle\Queue;
 
 use Siny\Q4MBundle\Queue\Q4M;
-use Siny\Q4MBundle\Queue\Exception\Q4MException;
 use Siny\Q4MBundle\Queue\Exception\SubscriberException;
 
 /**
- * This is a class that is very simply Q4M client.
+ * This is a subscriber class for Q4M
  *
  * @package SinyQ4M
  * @subpackage Queue
@@ -23,18 +22,41 @@ use Siny\Q4MBundle\Queue\Exception\SubscriberException;
  */
 class Subscriber
 {
+    /**
+     * Q4M
+     *
+     * @var Q4M
+     */
     private $q4m;
 
+    /**
+     * Construct with Q4M to subscribe
+     *
+     * @param Siny\Q4MBundle\Queue\Q4M $q4m
+     */
     public function __construct(Q4M $q4m)
     {
         $this->q4m = $q4m;
     }
 
+    /**
+     * Get Q4M
+     *
+     * @return Siny\Q4MBundle\Queue\Q4M
+     */
     public function getQ4M()
     {
         return $this->q4m;
     }
 
+    /**
+     * Subscribe
+     *
+     * @param string $table - A table name to subscribe
+     * @param array $queue - A queue to subscribe
+     * @throws SubscriberException
+     * @return Siny\Q4MBundle\Queue\Subscriber
+     */
     public function subscribe($table, array $queue)
     {
         try {
