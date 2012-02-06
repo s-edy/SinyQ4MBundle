@@ -1,8 +1,10 @@
 parameters:
-  siny_q4m.queue.q4m.class:    Siny\Q4MBundle\Queue\Q4M
-  siny_q4m.queue.pdo.dsn:      your_q4m_queue_dsn
-  siny_q4m.queue.pdo.username: your_q4m_queue_username
-  siny_q4m.queue.pdo.password: your_q4m_queue_password
+  siny_q4m.queue.q4m.class:        Siny\Q4MBundle\Queue\Q4M
+  siny_q4m.queue.subscriber.class: Siny\Q4MBundle\Queue\Subscriber
+  siny_q4m.queue.consumer.class:   Siny\Q4MBundle\Queue\Consumer
+  siny_q4m.queue.pdo.dsn:          your_q4m_queue_dsn
+  siny_q4m.queue.pdo.username:     your_q4m_queue_username
+  siny_q4m.queue.pdo.password:     your_q4m_queue_password
 
 services:
   siny_q4m.queue.pdo:
@@ -14,3 +16,9 @@ services:
   siny_q4m.queue.q4m:
     class:     %siny_q4m.queue.q4m.class%
     arguments: [ @siny_q4m.queue.pdo ]
+  siny_q4M.queue.subscriber:
+    class:     %siny_q4m.queue.subscriber.class%
+    arguments: [ @siny_q4m.queue.q4m ]
+  siny_q4M.queue.consumer:
+    class:     %siny_q4m.queue.consumer.class%
+    arguments: [ @siny_q4m.queue.q4m ]

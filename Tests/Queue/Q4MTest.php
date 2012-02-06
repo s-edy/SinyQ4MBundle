@@ -8,7 +8,7 @@
 * file that was distributed with this source code.
 */
 
-namespace Siny\Q4MBundle\Tests\API;
+namespace Siny\Q4MBundle\Tests\Queue;
 
 use Siny\Q4MBundle\Queue\Q4M;
 use \PDO;
@@ -17,6 +17,10 @@ use \ReflectionProperty;
 
 class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
 {
+    const VERSION = '0.2.0';
+
+    const FETCH_CLASS = "Siny\Q4MBundle\Tests\Queue\Q4MTestFetchClass";
+
     /**
      * PDO object
      * @var PDO
@@ -85,6 +89,14 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     {
         parent::tearDown();
         $this->forceAbort();
+    }
+
+    /**
+     * Get Q4M version
+     */
+    public function testGetVersion()
+    {
+        $this->assertSame(self::VERSION, $this->q4m->getVersion());
     }
 
     /**
@@ -344,16 +356,6 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     }
 
     /**
-     * The first queue will return when invoking dequeue
-     *
-     * @depends testDequeuedValueIsArrayInTheCaseOfDefault
-     */
-    public function testTheFirstQueueWillReturnWhenInvokingDequeue(array $value)
-    {
-        $this->assertSame($this->getFixtureRow(0), $value, "The value is not first queue.");
-    }
-
-    /**
      * Can choice dequeued value type
      */
     public function testCanChoiceDequeuedValueType()
@@ -361,6 +363,70 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
         $this->q4m->waitWithSingleTable($this->getTableName());
 
         $this->assertInstanceOf('stdClass', $this->q4m->dequeue(PDO::FETCH_OBJ), "dequeued values is not stdClass class instance.");
+    }
+
+    /**
+     * Can choice dequeued value type as fetching column mode
+     */
+    public function testCanChoiceDequeuedValueTypeAsFetchingColumnMode()
+    {
+        $this->q4m->waitWithSingleTable($this->getTableName());
+
+        $queue = $this->q4m->dequeue(PDO::FETCH_COLUMN, 0);
+        $row = $this->getFixtureRow(0);
+        $this->assertSame($row["id"], $queue, "dequeued values is not column value.");
+    }
+
+    /**
+     * Can choice dequeued value type as fetching class mode
+     */
+    public function testCanChoiceDequeuedValueTypeAsFetchingClassMode()
+    {
+        $this->q4m->waitWithSingleTable($this->getTableName());
+
+        $queue = $this->q4m->dequeue(PDO::FETCH_CLASS, self::FETCH_CLASS, array());
+        $this->assertInstanceOf(self::FETCH_CLASS, $queue, "dequeued values is not class instance for fetching.");
+    }
+
+    /**
+     * Can choice dequeued value type as fetching into mode
+     */
+    public function testCanChoiceDequeuedValueTypeAsFetchingIntoMode()
+    {
+        $this->q4m->waitWithSingleTable($this->getTableName());
+
+        $class = self::FETCH_CLASS;
+        $object = new $class();
+        $queue = $this->q4m->dequeue(PDO::FETCH_INTO, $object);
+        $this->assertSame($object, $queue, "dequeued values is not class instance for fetching.");
+    }
+
+    /**
+     * Exception will occur when setFetchMode failed when dequeueing
+     *
+     * @expectedException Siny\Q4MBundle\Queue\Exception\Q4MException
+     */
+    public function testExceptionWillOccurWhenSetFetchModeFailedWhenDequeueing()
+    {
+        $statement = $this->getMock('PDOStatement', array('fetch'));
+        $statement->expects($this->any())->method('setFetchMode')->will($this->returnValue(false));
+        $pdo = $this->getMock('PDO', array('query'), array('sqlite::memory:'));
+        $pdo->expects($this->any())->method('query')->will($this->returnValue($statement));
+
+        $q4m = new Q4M($pdo);
+        $this->setOwnerMode($q4m, true);
+
+        $q4m->dequeue(PDO::FETCH_INTO, new \stdClass());
+    }
+
+    /**
+     * The first queue will return when invoking dequeue
+     *
+     * @depends testDequeuedValueIsArrayInTheCaseOfDefault
+     */
+    public function testTheFirstQueueWillReturnWhenInvokingDequeue(array $value)
+    {
+        $this->assertSame($this->getFixtureRow(0), $value, "The value is not first queue.");
     }
 
     /**
@@ -596,23 +662,13 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     private function getMockOfPDOToFailExecution(array $message = array('ABCDE', 99, "Mock Error Code"))
     {
         $statement = $this->getMock('PDOStatement', array('bindValue', 'execute', 'errorInfo'));
-        $statement->expects($this->any())
-            ->method('bindValue')
-            ->will($this->returnValue(true));
-        $statement->expects($this->any())
-            ->method('execute')
-            ->will($this->returnValue(false));
-        $statement->expects($this->any())
-            ->method('errorInfo')
-            ->will($this->returnValue($message));
+        $statement->expects($this->any())->method('bindValue')->will($this->returnValue(true));
+        $statement->expects($this->any())->method('execute')->will($this->returnValue(false));
+        $statement->expects($this->any())->method('errorInfo')->will($this->returnValue($message));
 
         $pdo = $this->getMock('PDO', array('prepare', 'query'), array('sqlite::memory:'));
-        $pdo->expects($this->any())
-            ->method('prepare')
-            ->will($this->returnValue($statement));
-        $pdo->expects($this->any())
-            ->method('query')
-            ->will($this->returnValue(false));
+        $pdo->expects($this->any())->method('prepare')->will($this->returnValue($statement));
+        $pdo->expects($this->any())->method('query')->will($this->returnValue(false));
 
         return $pdo;
     }
@@ -620,26 +676,18 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     private function getMockOfPDOToFetchFailed()
     {
         $statement = $this->getMock('PDOStatement', array('fetch'));
-        $statement->expects($this->any())
-            ->method('fetch')
-            ->will($this->returnValue(false));
+        $statement->expects($this->any())->method('fetch')->will($this->returnValue(false));
         $pdo = $this->getMock('PDO', array('query'), array('sqlite::memory:'));
-        $pdo->expects($this->any())
-            ->method('query')
-            ->will($this->returnValue($statement));
+        $pdo->expects($this->any())->method('query')->will($this->returnValue($statement));
         return $pdo;
     }
 
     private function getMockOfPDOWhichReturnIncorrectResponse($response)
     {
         $statement = $this->getMock('PDOStatement', array('fetch'));
-        $statement->expects($this->any())
-            ->method('fetch')
-            ->will($this->returnValue($response));
+        $statement->expects($this->any())->method('fetch')->will($this->returnValue($response));
         $pdo = $this->getMock('PDO', array('query'), array('sqlite::memory:'));
-        $pdo->expects($this->any())
-            ->method('query')
-            ->will($this->returnValue($statement));
+        $pdo->expects($this->any())->method('query')->will($this->returnValue($statement));
         return $pdo;
     }
 
@@ -649,10 +697,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     private function getMockOfPDOToFailQuery()
     {
         $pdo = $this->getMock('PDO', array('query'), array('sqlite::memory:'));
-        $pdo->expects($this->any())
-        ->method('query')
-        ->will($this->returnValue(false));
-
+        $pdo->expects($this->any())->method('query')->will($this->returnValue(false));
         return $pdo;
     }
 
@@ -663,3 +708,5 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
         $reflection->setValue($q4m, $isModeOwner);
     }
 }
+
+class Q4MTestFetchClass {}
