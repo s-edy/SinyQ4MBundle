@@ -26,6 +26,13 @@ use \Exception;
 class Q4M
 {
     /**
+     * The version of Q4M
+     *
+     * @var string
+     */
+    const VERSION = '0.1.2';
+
+    /**
      * PDO object
      * @var PDO
      */
@@ -54,6 +61,16 @@ class Q4M
     {
         $this->pdo = $pdo;
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
+
+    /**
+     * Get version
+     *
+     * @return string
+     */
+    public function getVersion()
+    {
+        return self::VERSION;
     }
 
     /**
