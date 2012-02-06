@@ -116,16 +116,23 @@ class Q4M
      * @throws Exception
      * @return mixed (depends on the fetch type)
      */
-    public function dequeue($style = PDO::FETCH_ASSOC)
+    public function dequeue()
     {
         if ($this->isModeOwner() === false) {
             throw new Q4MException("Must execute any wait function before dequeueing.");
         }
+        $count = func_num_args();
+        $arguments = ($count === 0) ? array(\PDO::FETCH_ASSOC) : func_get_args();
         try {
             $statement = $this->query(sprintf('SELECT * FROM %s', $this->getWaitingTableName()));
-            return $this->fetch($statement, $style);
+            if ($count > 1) {
+                if (call_user_func_array(array($statement, "setFetchMode"), $arguments) === false) {
+                    throw new Q4MException("Failed to setFetchMode.");
+                }
+            }
+            return $this->fetch($statement, $arguments[0]);
         } catch (Exception $e) {
-            throw new Q4MException(sprintf("Failed to dequeue. style=[%s]", $style), 0, $e);
+            throw new Q4MException(sprintf("Failed to dequeue. arguments=[%s]", var_export($arguments, true)), 0, $e);
         }
     }
 
