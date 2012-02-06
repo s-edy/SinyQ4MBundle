@@ -70,7 +70,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
 
     public function testAQueueWillReturnWhenConsuming()
     {
-        $expected = $this->getDataSet()->getIterator()->current()->getRow(0);
+        $expected = $this->getFixtureRow(0);
         $actual   = $this->consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
         $this->assertSame($expected, $actual, "Got queue wasn't same.");
         return $this->consumer;
@@ -159,6 +159,80 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
         $q4m->expects($this->any())->method("abort")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
         $consumer->abort();
+    }
+
+    public function testQueueWillConsumeAndEnqueueingQueueAsRetryingWhenRetrying()
+    {
+        $table = $GLOBALS['SinyQ4MBundle_TABLE'];
+        $expectedCount = $this->getConnection()->getRowCount($table);
+        $this->consumer->consume($table);
+        $this->consumer->retry();
+        $actualCount = $this->getConnection()->getRowCount($table);
+
+        $this->assertSame($this->getFixtureRow(1), $this->getMySQLRow(0), "The 1st queue was not consumed.");
+        $this->assertSame($this->getFixtureRow(0), $this->getMySQLRow($expectedCount - 1), "The last queue was not 1st fixture row.");
+        $this->assertSame($expectedCount, $actualCount, "Queue was consumed. A queue was consumed, and A queue was subscribed.");
+    }
+
+    public function testExceptionWillOccurWhenRetryingFailedButFailedQueueLogged()
+    {
+        $this->setExpectedException("Siny\Q4MBundle\Queue\Exception\ConsumerException", serialize($this->getFixtureRow(0)));
+
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("end"), array(self::$pdo));
+        $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
+        $consumer = new Consumer($q4m);
+        $consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
+        $consumer->retry();
+
+        return $consumer;
+    }
+
+    public function testWhenExceptionOccurredAtEndButQueueWillEnqueue()
+    {
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("end"), array(self::$pdo));
+        $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
+        $consumer = new Consumer($q4m);
+        $consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
+        try {
+            $consumer->retry();
+            $this->fail("Exception didn't occueed");
+        } catch (\Exception $e) {
+            $count = $this->getConnection()->getRowCount($GLOBALS['SinyQ4MBundle_TABLE']);
+            $this->assertSame($this->getFixtureRow(0), $this->getMySQLRow($count - 1), "Queue wasn't enqueued");
+        }
+    }
+
+    /**
+     * @expectedException Siny\Q4MBundle\Queue\Exception\ConsumerException
+     */
+    public function testExceptionWillOccurWhenRetryingBeforeConsuming()
+    {
+        $this->consumer->retry();
+    }
+
+    /**
+    * Get fixture row
+    *
+    * @param integer $index
+    * @return array
+    */
+    private function getFixtureRow($index)
+    {
+        return $this->getDataSet()->getIterator()->current()->getRow($index);
+    }
+
+    /**
+     * Get MySQL row
+     *
+     * @param integer $index
+     * @return array
+     */
+    private function getMySQLRow($index)
+    {
+        $statement = self::$pdo->prepare(sprintf("SELECT * FROM %s LIMIT 1 OFFSET :offset", $GLOBALS["SinyQ4MBundle_TABLE"]));
+        $statement->bindValue(':offset', $index, \PDO::PARAM_INT);
+        $statement->execute();
+        return $statement->fetch(\PDO::FETCH_ASSOC);
     }
 }
 
