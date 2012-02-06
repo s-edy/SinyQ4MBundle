@@ -30,7 +30,7 @@ class Q4M
      *
      * @var string
      */
-    const VERSION = '0.1.2';
+    const VERSION = '0.2.0';
 
     /**
      * PDO object
