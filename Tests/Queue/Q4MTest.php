@@ -17,6 +17,8 @@ use \ReflectionProperty;
 
 class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
 {
+    const VERSION = '0.2.0';
+
     const FETCH_CLASS = "Siny\Q4MBundle\Tests\Queue\Q4MTestFetchClass";
 
     /**
@@ -87,6 +89,14 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     {
         parent::tearDown();
         $this->forceAbort();
+    }
+
+    /**
+     * Get Q4M version
+     */
+    public function testGetVersion()
+    {
+        $this->assertSame(self::VERSION, $this->q4m->getVersion());
     }
 
     /**

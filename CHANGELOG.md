@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+Release 0.2.0 (Feb 7, 2012)
+---------------------------
+* Added subscriber and consumer classes
+
 Release 0.1.2 (Jan 4, 2012)
 ---------------------------
 * Fixed a bug that services.yml cannot be parsed
