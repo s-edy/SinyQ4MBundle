@@ -131,7 +131,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenEndingFailed()
     {
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("isModeOwner", "end"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m = $this->getMockOfQ4M(array("isModeOwner", "end"));
         $q4m->expects($this->any())->method("isModeOwner")->will($this->returnValue(true));
         $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
@@ -154,7 +154,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenAbortingFailed()
     {
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("isModeOwner", "abort"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m = $this->getMockOfQ4M(array("isModeOwner", "abort"));
         $q4m->expects($this->any())->method("isModeOwner")->will($this->returnValue(true));
         $q4m->expects($this->any())->method("abort")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
@@ -178,7 +178,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
     {
         $this->setExpectedException("Siny\Q4MBundle\Queue\Exception\ConsumerException", serialize($this->getFixtureRow(0)));
 
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("end"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m = $this->getMockOfQ4M(array("end"));
         $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
         $consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
@@ -189,7 +189,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
 
     public function testWhenExceptionOccurredAtEndButQueueWillEnqueue()
     {
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("end"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m = $this->getMockOfQ4M(array("end"));
         $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
         $consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
@@ -234,6 +234,11 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
         $statement->bindValue(':offset', $index, \PDO::PARAM_INT);
         $statement->execute();
         return $statement->fetch(\PDO::FETCH_ASSOC);
+    }
+
+    private function getMockOfQ4M(array $methods = array())
+    {
+        return $this->getMock(self::Q4M_CLASS, $methods, array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
     }
 }
 
