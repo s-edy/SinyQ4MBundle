@@ -33,6 +33,25 @@ class Q4M
     const VERSION = '0.2.0';
 
     /**
+     * DSN
+     *
+     * @var string
+     */
+    private $dsn;
+
+    /**
+     * Connection user name
+     */
+    private $user;
+
+    /**
+     * Connection password
+     *
+     * @var string
+     */
+    private $password;
+
+    /**
      * PDO object
      * @var PDO
      */
@@ -55,11 +74,16 @@ class Q4M
     /**
      * Constructing with PDO
      *
-     * @param PDO $pdo
+     * @param string $dsn DSN string
+     * @param string $user connection user name
+     * @param string $password connection password
      */
-    public function __construct(PDO $pdo)
+    public function __construct($dsn, $user, $password)
     {
-        $this->pdo = $pdo;
+        $this->dsn = $dsn;
+        $this->user = $user;
+        $this->password = $password;
+        $this->pdo = new \PDO($this->dsn, $this->user, $this->password);
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
 
@@ -114,7 +138,7 @@ class Q4M
     public function enqueue($table, array $parameters)
     {
         try {
-            $statement = $this->bind($this->pdo->prepare($this->generateEnqueueSQL($table, $parameters)), $parameters);
+            $statement = $this->bind($this->getPDO()->prepare($this->generateEnqueueSQL($table, $parameters)), $parameters);
             $result = $statement->execute();
             if ($result !== true) {
                 throw new Q4MException(sprintf("Failed to insert. error=[%s]", implode(",", $statement->errorInfo())));
@@ -162,7 +186,7 @@ class Q4M
      */
     public function waitWithSingleTable($table)
     {
-        $function = sprintf("queue_wait(%s)", $this->pdo->quote($table));
+        $function = sprintf("queue_wait(%s)", $this->getPDO()->quote($table));
         try {
             $this->executeFunction($function);
             return $this->wait($table);
@@ -183,7 +207,7 @@ class Q4M
     {
         $arguments = array();
         foreach ($tables as $table) {
-            $arguments[] = $this->pdo->quote($table);
+            $arguments[] = $this->getPDO()->quote($table);
         }
         $arguments[] = intval($timeout);
         $function = sprintf("queue_wait(%s)", implode(",", $arguments));
@@ -338,9 +362,9 @@ class Q4M
      */
     private function query($sql)
     {
-        $statement = $this->pdo->query($sql);
+        $statement = $this->getPDO()->query($sql);
         if ($statement === false) {
-            throw new Q4MException(sprintf("Failed to execute query. sql=[%s], message=[%s]", $sql, implode(",", $this->pdo->errorInfo())));
+            throw new Q4MException(sprintf("Failed to execute query. sql=[%s], message=[%s]", $sql, implode(",", $this->getPDO()->errorInfo())));
         }
         return $statement;
     }
