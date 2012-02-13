@@ -83,8 +83,7 @@ class Q4M
         $this->dsn = $dsn;
         $this->user = $user;
         $this->password = $password;
-        $this->pdo = new \PDO($this->dsn, $this->user, $this->password);
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->reconnect();
     }
 
     /**
@@ -125,6 +124,21 @@ class Q4M
     public function getWaitingTableName()
     {
         return $this->waitingTable;
+    }
+
+    /**
+     * Reconnect
+     *
+     * @throws Q4MException
+     */
+     public function reconnect()
+    {
+        try {
+            $this->pdo = new \PDO($this->dsn, $this->user, $this->password);
+            $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (\Exception $e) {
+            throw new Q4MException(sprintf("Connecting failed."), 0, $e);
+        }
     }
 
     /**

@@ -116,6 +116,19 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     }
 
     /**
+     * Recconect
+     */
+    public function testRecconectingPdoConnection()
+    {
+        try {
+            $this->q4m->reconnect();
+            $this->assertTrue(true, "Connected successfully");
+        } catch (\Exception $e) {
+            $this->fail("Connection failed.");
+        }
+    }
+
+    /**
      * The waiting table name in the case of default
      */
     public function testGetWaitingTableNameInTheCaseOfDefault()
