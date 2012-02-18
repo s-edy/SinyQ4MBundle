@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+Release 0.2.1 (Feb 19, 2012)
+---------------------------
+* Can use reconnecting
+
 Release 0.2.0 (Feb 7, 2012)
 ---------------------------
 * Added subscriber and consumer classes
