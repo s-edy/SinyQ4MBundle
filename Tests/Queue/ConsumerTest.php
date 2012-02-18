@@ -59,7 +59,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
     public function setUp()
     {
         parent::setUp();
-        $this->q4m = new Q4M(self::$pdo);
+        $this->q4m = new Q4M($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']);
         $this->consumer = new Consumer($this->q4m);
     }
 
@@ -131,7 +131,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenEndingFailed()
     {
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("isModeOwner", "end"), array(self::$pdo));
+        $q4m = $this->getMockOfQ4M(array("isModeOwner", "end"));
         $q4m->expects($this->any())->method("isModeOwner")->will($this->returnValue(true));
         $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
@@ -154,7 +154,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenAbortingFailed()
     {
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("isModeOwner", "abort"), array(self::$pdo));
+        $q4m = $this->getMockOfQ4M(array("isModeOwner", "abort"));
         $q4m->expects($this->any())->method("isModeOwner")->will($this->returnValue(true));
         $q4m->expects($this->any())->method("abort")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
@@ -178,7 +178,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
     {
         $this->setExpectedException("Siny\Q4MBundle\Queue\Exception\ConsumerException", serialize($this->getFixtureRow(0)));
 
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("end"), array(self::$pdo));
+        $q4m = $this->getMockOfQ4M(array("end"));
         $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
         $consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
@@ -189,7 +189,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
 
     public function testWhenExceptionOccurredAtEndButQueueWillEnqueue()
     {
-        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("end"), array(self::$pdo));
+        $q4m = $this->getMockOfQ4M(array("end"));
         $q4m->expects($this->any())->method("end")->will($this->throwException(new \Exception()));
         $consumer = new Consumer($q4m);
         $consumer->consume($GLOBALS['SinyQ4MBundle_TABLE']);
@@ -198,7 +198,7 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
             $this->fail("Exception didn't occueed");
         } catch (\Exception $e) {
             $count = $this->getConnection()->getRowCount($GLOBALS['SinyQ4MBundle_TABLE']);
-            $this->assertSame($this->getFixtureRow(0), $this->getMySQLRow($count - 1), "Queue wasn't enqueued");
+            $this->assertSame($this->getFixtureRow(0), $this->getMySQLRow($count - 2), "Queue wasn't enqueued");
         }
     }
 
@@ -229,10 +229,16 @@ class ConsumerTest extends \PHPUnit_Extensions_Database_TestCase
      */
     private function getMySQLRow($index)
     {
-        $statement = self::$pdo->prepare(sprintf("SELECT * FROM %s LIMIT 1 OFFSET :offset", $GLOBALS["SinyQ4MBundle_TABLE"]));
+        $pdo = new \PDO($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']);
+        $statement = $pdo->prepare(sprintf("SELECT * FROM %s LIMIT 1 OFFSET :offset", $GLOBALS["SinyQ4MBundle_TABLE"]));
         $statement->bindValue(':offset', $index, \PDO::PARAM_INT);
         $statement->execute();
         return $statement->fetch(\PDO::FETCH_ASSOC);
+    }
+
+    private function getMockOfQ4M(array $methods = array())
+    {
+        return $this->getMock(self::Q4M_CLASS, $methods, array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
     }
 }
 

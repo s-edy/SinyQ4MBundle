@@ -77,7 +77,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     public function setUp()
     {
         parent::setUp();
-        $this->q4m = new Q4M(self::$pdo);
+        $this->q4m = new Q4M($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']);
     }
 
     /**
@@ -104,7 +104,7 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testGetPdo()
     {
-        $this->assertSame(self::$pdo, $this->q4m->getPDO(), "A PDO will retuen when invoking getPDO().");
+        $this->assertInstanceOf("\PDO", $this->q4m->getPDO(), "A PDO will retuen when invoking getPDO().");
     }
 
     /**
@@ -113,6 +113,19 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     public function testIsModeOwnerInTheCaseOfDefault()
     {
         $this->assertFalse($this->q4m->isModeOwner(), "current mode is NON-OWNER");
+    }
+
+    /**
+     * Recconect
+     */
+    public function testRecconectingPdoConnection()
+    {
+        try {
+            $this->q4m->reconnect();
+            $this->assertTrue(true, "Connected successfully");
+        } catch (\Exception $e) {
+            $this->fail("Connection failed.");
+        }
     }
 
     /**
@@ -223,7 +236,9 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenSqlExecutionFailedWhenInvokingEnqueue()
     {
-        $q4m = new Q4M($this->getMockOfPDOToFailExecution(array('ABCDE', 99, "Mock Error Code")));
+        $pdo = $this->getMockOfPDOToFailExecution(array('ABCDE', 99, "Mock Error Code"));
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $q4m->enqueue($this->getTableName(), $this->getFixtureRow(0));
     }
 
@@ -269,7 +284,9 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenSqlExecutionFailedAtInvokingWaitWithSingleTable()
     {
-        $q4m = new Q4M($this->getMockOfPDOToFailExecution());
+        $pdo = $this->getMockOfPDOToFailExecution();
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $q4m->waitWithSingleTable($this->getTableName());
     }
 
@@ -412,8 +429,8 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
         $statement->expects($this->any())->method('setFetchMode')->will($this->returnValue(false));
         $pdo = $this->getMock('PDO', array('query'), array('sqlite::memory:'));
         $pdo->expects($this->any())->method('query')->will($this->returnValue($statement));
-
-        $q4m = new Q4M($pdo);
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $this->setOwnerMode($q4m, true);
 
         $q4m->dequeue(PDO::FETCH_INTO, new \stdClass());
@@ -438,7 +455,8 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenQueryExecutionFailedWhenInvokingDequeue(PDO $pdo)
     {
-        $q4m = new Q4M($pdo);
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $this->setOwnerMode($q4m, true);
         $q4m->dequeue();
     }
@@ -459,7 +477,9 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenFetchExecutionFailedWhenInvokingDequeue()
     {
-        $q4m = new Q4M($this->getMockOfPDOToFetchFailed());
+        $pdo = $this->getMockOfPDOToFetchFailed();
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $this->setOwnerMode($q4m, true);
         $q4m->dequeue();
     }
@@ -511,7 +531,9 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenFetchingFailedWhenInvokingEnd()
     {
-        $q4m = new Q4M($this->getMockOfPDOToFetchFailed());
+        $pdo = $this->getMockOfPDOToFetchFailed();
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $q4m->end();
     }
 
@@ -523,7 +545,8 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     public function testExceptionWillOccurWhenIncorrectResponseWhenInvokingEnd()
     {
         $pdo = $this->getMockOfPDOWhichReturnIncorrectResponse(array('queue_end()' => "0"));
-        $q4m = new Q4M($pdo);
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $q4m->end();
     }
 
@@ -575,7 +598,9 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
      */
     public function testExceptionWillOccurWhenFetchingFailedWhenInvokingAbort()
     {
-        $q4m = new Q4M($this->getMockOfPDOToFetchFailed());
+        $pdo = $this->getMockOfPDOToFetchFailed();
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $q4m->abort();
     }
 
@@ -587,7 +612,8 @@ class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
     public function testExceptionWillOccurWhenIncorrectResponseWhenInvokingAbort()
     {
         $pdo = $this->getMockOfPDOWhichReturnIncorrectResponse(array('queue_end()' => "0"));
-        $q4m = new Q4M($pdo);
+        $q4m = $this->getMock("Siny\Q4MBundle\Queue\Q4M", array("getPDO"), array($GLOBALS['SinyQ4MBundle_DSN'], $GLOBALS['SinyQ4MBundle_USER'], $GLOBALS['SinyQ4MBundle_PASSWORD']));
+        $q4m->expects($this->any())->method("getPDO")->will($this->returnValue($pdo));
         $q4m->abort();
     }
 
