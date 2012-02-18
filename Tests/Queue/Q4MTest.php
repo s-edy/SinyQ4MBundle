@@ -17,7 +17,7 @@ use \ReflectionProperty;
 
 class Q4MTest extends \PHPUnit_Extensions_Database_TestCase
 {
-    const VERSION = '0.2.0';
+    const VERSION = '0.2.1';
 
     const FETCH_CLASS = "Siny\Q4MBundle\Tests\Queue\Q4MTestFetchClass";
 
