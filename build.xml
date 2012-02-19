@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project name="SinyQ4MBundle" default="build" basedir=".">
- <property name="source" value="${basedir}/src"/>
+ <property name="source" value="${basedir}/Queue"/>
 
  <target name="vendor" description="Install vendors">
   <exec executable="php">
