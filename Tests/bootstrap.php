@@ -8,8 +8,8 @@
 * file that was distributed with this source code.
 */
 
-$vendorDirectory = realpath(__DIR__ . '/../../../../../vendor');
-$bundleDirectory = $vendorDirectory . '/bundles/Siny/Q4MBundle';
+$bundleDirectory = realpath(__DIR__ . DIRECTORY_SEPARATOR . '..');
+$vendorDirectory = realpath($bundleDirectory . DIRECTORY_SEPARATOR . 'vendor');
 
 require_once $vendorDirectory . '/symfony/src/Symfony/Component/ClassLoader/UniversalClassLoader.php';
 

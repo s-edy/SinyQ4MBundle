@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    backupGlobals               = "false"
+    backupStaticAttributes      = "false"
+    colors                      = "false"
+    convertErrorsToExceptions   = "true"
+    convertNoticesToExceptions  = "true"
+    convertWarningsToExceptions = "true"
+    processIsolation            = "false"
+    stopOnFailure               = "false"
+    syntaxCheck                 = "true"
+    bootstrap                   = "./Tests/bootstrap.php"
+>
+    <testsuites>
+        <testsuite name="SinyQ4MBundle Test Suite">
+            <directory suffix="Test.php">./Tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <php>
+        <var name="SinyQ4MBundle_DSN" value="mysql:dbname=q4mtest;host=localhost" />
+        <var name="SinyQ4MBundle_USER" value="q4mtestuser" />
+        <var name="SinyQ4MBundle_PASSWORD" value="q4mtestpassword" />
+        <var name="SinyQ4MBundle_DBNAME" value="q4mtest" />
+        <var name="SinyQ4MBundle_TABLE" value="q4mtest" />
+        <var name="SinyQ4MBundle_LOW_PRIORITY_TABLE" value="q4mtest_row_priority" />
+    </php>
+
+    <filter>
+        <whitelist>
+            <directory>./Queue</directory>
+            <exclude>
+                <directory>./Tests</directory>
+            </exclude>
+        </whitelist>
+    </filter>
+
+</phpunit>
