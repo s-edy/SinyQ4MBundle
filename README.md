@@ -3,6 +3,8 @@ Q4M Bundle
 
 This is a client of Q4M to use in Symfony2 as a Bundle
 
+[CI(Continuous Integration)](http://jenkins.siny.jp:8080/job/SinyQ4MBundle/)
+
 Installation
 -------------
 
