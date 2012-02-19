@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+Release 0.2.2 (Feb 19, 2012)
+---------------------------
+* Started CI
+
 Release 0.2.1 (Feb 19, 2012)
 ---------------------------
 * Can use reconnecting
