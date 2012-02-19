@@ -25,7 +25,7 @@
 
  <target name="phpunit" description="Run unit tests using PHPUnit and generates junit.xml and clover.xml">
   <exec executable="phpunit" failonerror="true">
-   <arg line="--configuration ${basedir}/phpunit.xml.jenkins"/>
+   <arg line="--configuration ${basedir}/phpunit.xml.jenkins --log-junit ${basedir}/build/logs/junit.xml"/>
   </exec>
  </target>
 
