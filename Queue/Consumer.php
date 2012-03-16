@@ -16,9 +16,9 @@ use Siny\Q4MBundle\Queue\Exception\ConsumerException;
 /**
  * This is a consumer class for Q4M
  *
- * @package SinyQ4M
+ * @package    SinyQ4M
  * @subpackage Queue
- * @author Shinichiro Yuki <edy@siny.jp>
+ * @author     Shinichiro Yuki <edy@siny.jp>
  */
 class Consumer
 {
@@ -79,8 +79,9 @@ class Consumer
      * you can specify parameters to dequeue and fetch, like `PDOStatement::setFetchMode()`.
      * consume($table string [, $style integer][, mixed options][, ...])
      *
-     * @throws \Siny\Q4MBundle\Queue\Exception\ConsumerException
      * @return mixed - Queue
+     *
+     * @throws \Siny\Q4MBundle\Queue\Exception\ConsumerException
      */
     public function consume()
     {
@@ -93,14 +94,17 @@ class Consumer
             $this->table = array_shift($arguments);
             $this->getQ4M()->waitWithSingleTable($this->table);
             $this->queue = call_user_func_array(array($this->getQ4M(), "dequeue"), $arguments);
-            return $this->getQueue();
         } catch (\Exception $e) {
             throw new ConsumerException(sprintf("Failed to consume. arguments=[%s]", var_export($arguments, true)), 0, $e);
         }
+
+        return $this->getQueue();
     }
 
     /**
      * End
+     *
+     * @return null
      *
      * @throws ConsumerException
      */
@@ -117,6 +121,8 @@ class Consumer
 
     /**
      * Abort
+     *
+     * @return null
      *
      * @throws ConsumerException
      */
@@ -136,6 +142,8 @@ class Consumer
      *
      * Re-enqueue a queue keeped inside, and ends it.
      *
+     * @return null
+
      * @throws \LogicException
      * @throws ConsumerException
      */

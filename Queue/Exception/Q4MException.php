@@ -15,9 +15,9 @@ use \Exception;
 /**
  * This is an Exception class for the Q4M
  *
- * @package SinyQ4M
+ * @package    SinyQ4M
  * @subpackage Queue
- * @author Shinichiro Yuki <edy@siny.jp>
+ * @author     Shinichiro Yuki <edy@siny.jp>
  */
 class Q4MException extends Exception
 {

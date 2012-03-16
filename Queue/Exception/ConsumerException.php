@@ -15,9 +15,9 @@ use Siny\Q4MBundle\Queue\Exception\Q4MException;
 /**
  * This is an Exception class for the Consumer
  *
- * @package SinyQ4M
+ * @package    SinyQ4M
  * @subpackage Queue
- * @author Shinichiro Yuki <edy@siny.jp>
+ * @author     Shinichiro Yuki <edy@siny.jp>
  */
 class ConsumerException extends Q4MException
 {

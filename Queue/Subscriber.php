@@ -16,9 +16,9 @@ use Siny\Q4MBundle\Queue\Exception\SubscriberException;
 /**
  * This is a subscriber class for Q4M
  *
- * @package SinyQ4M
+ * @package    SinyQ4M
  * @subpackage Queue
- * @author Shinichiro Yuki <edy@siny.jp>
+ * @author     Shinichiro Yuki <edy@siny.jp>
  */
 class Subscriber
 {
@@ -52,10 +52,12 @@ class Subscriber
     /**
      * Subscribe
      *
-     * @param string $table - A table name to subscribe
-     * @param array $queue - A queue to subscribe
-     * @throws SubscriberException
+     * @param string $table table name to subscribe
+     * @param array  $queue queue to subscribe
+     *
      * @return Siny\Q4MBundle\Queue\Subscriber
+     *
+     * @throws SubscriberException
      */
     public function subscribe($table, array $queue)
     {
@@ -64,9 +66,10 @@ class Subscriber
                 throw new \InvalidArgumentException("Queue was empty.");
             }
             $this->getQ4M()->enqueue($table, $queue);
-            return $this;
         } catch (\Exception $e) {
             throw new SubscriberException(sprintf("Failed to subscribe. table=[%s], queue=[%s]", $table, var_export($queue, true)), 0, $e);
         }
+
+        return $this;
     }
 }
